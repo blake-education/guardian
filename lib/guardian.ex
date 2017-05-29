@@ -413,6 +413,13 @@ defmodule Guardian do
     domains = config(:allowed_jku_domains) || []
     schemes = config(:allowed_jku_schemes) || ~w(https)
 
+    # Handle cases where uris are provided.
+    extra = domains
+      |> Enum.map(fn (v) -> URI.parse(v).authority end)
+      |> Enum.filter(fn (v) -> v end)
+
+    domains = domains ++ extra
+
     with true <- Enum.member?(schemes, uri.scheme),
          true <- Enum.member?(domains, uri.authority),
          {:ok, 200, _headers, client} <- :hackney.request(:get, jku, [], "", []),
