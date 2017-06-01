@@ -390,6 +390,7 @@ defmodule Guardian do
       |> List.insert_at(-1, config(:secret_key))
       |> List.flatten
       |> Enum.uniq
+      |> Enum.filter(fn(x) -> x end)
       |> Enum.map(fn(x) -> jose_jwk(x) end)
       |> List.insert_at(0, jku_secret(JOSE.JWT.peek_payload(token).fields))
       |> Enum.filter(fn
