@@ -15,18 +15,6 @@ defmodule GuardianTest do
       "something_else" => "foo"
     }
 
-    claims_with_valid_jku = claims
-      |> Map.merge(%{
-        "jku" => "https://server.example/jwk/abcd",
-        "kid" => "abcd"
-      })
-
-    claims_with_invalid_jku = claims
-      |> Map.merge(%{
-        "jku" => "https://bad.actor/jwk/abcd",
-        "kid" => "abcd"
-      })
-
     config = Application.get_env(:guardian, Guardian)
     algo = hd(Keyword.get(config, :allowed_algos))
     secret = Keyword.get(config, :secret_key)
@@ -45,13 +33,25 @@ defmodule GuardianTest do
       |> JOSE.JWS.compact
       |> elem(1)
 
+    es512_jose_jws_with_valid_jku = JOSE.JWS.from_map(%{
+      "alg" => "ES512",
+      "jku" => "https://server.example/jwk/abcd",
+      "kid" => "abcd"
+    })
+
+    es512_jose_jws_with_invalid_jku = JOSE.JWS.from_map(%{
+      "alg" => "ES512",
+      "jku" => "https://bad.actor/jwk/abcd",
+      "kid" => "abcd"
+    })
+
     es512_jose_jwt_with_valid_jku = es512_jose_jwk
-      |> JOSE.JWT.sign(es512_jose_jws, claims_with_valid_jku)
+      |> JOSE.JWT.sign(es512_jose_jws_with_valid_jku, claims)
       |> JOSE.JWS.compact
       |> elem(1)
 
     es512_jose_jwt_with_invalid_jku = es512_jose_jwk
-      |> JOSE.JWT.sign(es512_jose_jws, claims_with_invalid_jku)
+      |> JOSE.JWT.sign(es512_jose_jws_with_invalid_jku, claims)
       |> JOSE.JWS.compact
       |> elem(1)
 
@@ -75,7 +75,6 @@ defmodule GuardianTest do
       :ok,
       %{
         claims: claims,
-        claims_with_valid_jku: claims_with_valid_jku,
         jwt: jwt,
         jose_jws: jose_jws,
         jose_jwk: jose_jwk,
@@ -147,7 +146,7 @@ defmodule GuardianTest do
 
   test "it verifies the jwt with public key in jku", context do
     with_mock :hackney, context.es512.mocks do
-      assert Guardian.decode_and_verify(context.es512.jwt_with_valid_jku) == {:ok, context.claims_with_valid_jku}
+      assert Guardian.decode_and_verify(context.es512.jwt_with_valid_jku) == {:ok, context.claims}
     end
   end
 

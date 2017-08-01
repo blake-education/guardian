@@ -8,6 +8,22 @@ defmodule Guardian.TestGuardianSerializer do
   def from_token(aud), do: {:ok, aud}
 end
 
+defmodule Guardian.TestJKUAgent do
+  @moduledoc false
+
+  @behaviour Guardian.JKUAgent
+  def get(_kid, uri) do
+    with {:ok, 200, _headers, client} <- :hackney.request(:get, uri, [], "", []),
+         {:ok, body} <- :hackney.body(client),
+         {:ok, json} <- Poison.decode(body)
+    do
+      {:ok, JOSE.JWK.from_map(json)}
+    else
+      _err -> {:error, "unable to retrieve public key"}
+    end
+  end
+end
+
 defmodule Guardian.TestHelper do
   @moduledoc false
 

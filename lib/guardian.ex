@@ -401,7 +401,7 @@ defmodule Guardian do
       |> Enum.map(fn(x) -> jose_jwk(x) end)
 
     # If token has a jku field, retrieve the key.
-    result = jku_public_key(JOSE.JWT.peek_payload(token).fields)
+    result = jku_public_key(JOSE.JWT.peek_protected(token).fields)
     case result do
       nil -> decode_token!(token, secrets)
       {:ok, jwk} -> decode_token!(token, List.insert_at(secrets, 0, jwk))
@@ -421,7 +421,17 @@ defmodule Guardian do
     Enum.find(results, fn({r, _}) -> r == :ok end) || Enum.at(results, 0)
   end
 
-  defp jku_public_key(%{"jku" => jku, "kid" => _kid}) do
+  defp jku_public_key(%{"jku" => jku, "kid" => kid}) do
+    agent = config(:jku_agent)
+    if agent && allowd_jku_uri?(jku) do
+      agent.get(kid, jku)
+    else
+      {:error, "unable to retrieve public key"}
+    end
+  end
+  defp jku_public_key(_), do: nil
+
+  defp allowd_jku_uri?(jku) do
     uri = URI.parse(jku)
     domains = config(:allowed_jku_domains) || []
     schemes = config(:allowed_jku_schemes) || ~w(https)
@@ -432,19 +442,8 @@ defmodule Guardian do
       |> Enum.filter(fn (v) -> v end)
 
     domains = domains ++ extra
-
-    with true <- Enum.member?(schemes, uri.scheme),
-         true <- Enum.member?(domains, uri.authority),
-         {:ok, 200, _headers, client} <- :hackney.request(:get, jku, [], "", []),
-         {:ok, body} <- :hackney.body(client),
-         {:ok, json} <- Poison.decode(body)
-    do
-      {:ok, JOSE.JWK.from_map(json)}
-    else
-      _err -> {:error, "unable to retrieve public key"}
-    end
+    Enum.member?(schemes, uri.scheme) && Enum.member?(domains, uri.authority)
   end
-  defp jku_public_key(_), do: nil
 
   defp allowed_algos, do: config(:allowed_algos, @default_algos)
 
