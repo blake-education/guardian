@@ -153,7 +153,7 @@ defmodule GuardianTest do
 
   test "it rejects untrusted jku urls", context do
     with_mock :hackney, context.es512.mocks do
-      assert Guardian.decode_and_verify(context.es512.jwt_with_invalid_jku) == {:error, :invalid_token}
+      assert Guardian.decode_and_verify(context.es512.jwt_with_invalid_jku) == {:error, "unable to retrieve public key"}
     end
   end
 
