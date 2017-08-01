@@ -391,47 +391,62 @@ defmodule Guardian do
   end
 
   defp decode_token(token, secret) do
+    secrets = enumerate_config_secrets(secret)
+    header = JOSE.JWT.peek_protected(token).fields
+    decode_token(token, secrets, header)
+  end
+
+  # header has jwk, use it.
+  # https://tools.ietf.org/html/rfc7515#section-4.1.3
+  defp decode_token(token, _secrets, %{"jwk" => jwk_map}) do
+    jwk = JOSE.JWK.from_map(jwk_map)
+    decode_token!(token, jwk)
+  end
+
+  # header has jku and kid, use it.
+  # https://tools.ietf.org/html/rfc7515#section-4.1.2
+  defp decode_token(token, _secrets, %{"jku" => jku, "kid" => kid}) do
+    case jku_public_key(jku, kid) do
+      {:ok, jwk} -> decode_token!(token, jwk)
+      error -> error
+    end
+  end
+
+  defp decode_token(token, secrets, _headers) do
+    results = secrets
+      |> Stream.map(fn(s) -> decode_token!(token, s) end)
+
+    Enum.find(results, fn({r, _}) -> r == :ok end) || Enum.at(results, 0)
+  end
+
+  defp enumerate_config_secrets(secret) do
     # Create a list of secrets that can be used to verify token.
-    secrets = secret
+    secret
       |> List.wrap
       |> List.insert_at(-1, config(:secret_key))
       |> List.flatten
       |> Enum.uniq
       |> Enum.filter(fn(x) -> x end)
       |> Enum.map(fn(x) -> jose_jwk(x) end)
+  end
 
-    # If token has a jku field, retrieve the key.
-    result = jku_public_key(JOSE.JWT.peek_protected(token).fields)
-    case result do
-      nil -> decode_token!(token, secrets)
-      {:ok, jwk} -> decode_token!(token, List.insert_at(secrets, 0, jwk))
-      err -> err
+  defp decode_token!(token, secret) do
+    case JOSE.JWT.verify_strict(secret, allowed_algos(), token) do
+      {true, jose_jwt, _} ->  {:ok, jose_jwt.fields}
+      {false, _, _} -> {:error, :invalid_token}
     end
   end
 
-  defp decode_token!(token, secrets) do
-    results = secrets
-      |> Stream.map(fn(s) ->
-        case JOSE.JWT.verify_strict(s, allowed_algos(), token) do
-          {true, jose_jwt, _} ->  {:ok, jose_jwt.fields}
-          {false, _, _} -> {:error, :invalid_token}
-        end
-      end)
-
-    Enum.find(results, fn({r, _}) -> r == :ok end) || Enum.at(results, 0)
-  end
-
-  defp jku_public_key(%{"jku" => jku, "kid" => kid}) do
+  defp jku_public_key(jku, kid) do
     agent = config(:jku_agent)
-    if agent && allowd_jku_uri?(jku) do
+    if agent && allowed_jku_uri?(jku) do
       agent.get(kid, jku)
     else
       {:error, "unable to retrieve public key"}
     end
   end
-  defp jku_public_key(_), do: nil
 
-  defp allowd_jku_uri?(jku) do
+  defp allowed_jku_uri?(jku) do
     uri = URI.parse(jku)
     domains = config(:allowed_jku_domains) || []
     schemes = config(:allowed_jku_schemes) || ~w(https)
