@@ -8,10 +8,10 @@ defmodule Guardian.TestGuardianSerializer do
   def from_token(aud), do: {:ok, aud}
 end
 
-defmodule Guardian.TestJKUAgent do
+defmodule Guardian.TestJKUClient do
   @moduledoc false
 
-  @behaviour Guardian.JKUAgent
+  @behaviour Guardian.JKUClient
   def get(_kid, uri) do
     with {:ok, 200, _headers, client} <- :hackney.request(:get, uri, [], "", []),
          {:ok, body} <- :hackney.body(client),

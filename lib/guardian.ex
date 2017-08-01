@@ -431,9 +431,9 @@ defmodule Guardian do
   end
 
   defp jku_public_key(jku, kid) do
-    agent = config(:jku_agent)
-    if agent && allowed_jku_uri?(jku) do
-      agent.get(kid, jku)
+    client = config(:jku_client)
+    if client && allowed_jku_uri?(jku) do
+      client.get(kid, jku)
     else
       {:error, "unable to retrieve public key"}
     end

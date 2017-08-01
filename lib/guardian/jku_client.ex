@@ -1,4 +1,4 @@
-defmodule Guardian.JKUAgent do
+defmodule Guardian.JKUClient do
   @moduledoc """
   Guardian JKU fetch behaviour.
 

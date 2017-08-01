@@ -12,7 +12,7 @@ config :guardian, Guardian,
       verify_issuer: true,
       secret_key: "woiuerojksldkjoierwoiejrlskjdf",
       serializer: Guardian.TestGuardianSerializer,
-      jku_agent: Guardian.TestJKUAgent,
+      jku_client: Guardian.TestJKUClient,
       hooks: Guardian.Hooks.Test,
       system_foo: {:system, "FOO"},
       permissions: %{
