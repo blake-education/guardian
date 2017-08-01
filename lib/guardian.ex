@@ -396,13 +396,6 @@ defmodule Guardian do
     decode_token(token, secrets, header)
   end
 
-  # header has jwk, use it.
-  # https://tools.ietf.org/html/rfc7515#section-4.1.3
-  defp decode_token(token, _secrets, %{"jwk" => jwk_map}) do
-    jwk = JOSE.JWK.from_map(jwk_map)
-    decode_token!(token, jwk)
-  end
-
   # header has jku and kid, use it.
   # https://tools.ietf.org/html/rfc7515#section-4.1.2
   defp decode_token(token, _secrets, %{"jku" => jku, "kid" => kid}) do
