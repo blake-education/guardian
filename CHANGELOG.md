@@ -1,6 +1,16 @@
-# v 0.15.0
+# v 0.14.5
 
-* Add support for multiple secrets and jku claims
+Update the poison and phoenix deps to allow a broader version setting
+
+# v 0.14.4
+
+* Fix a param issue in sockets
+
+# v 0.14.3
+
+* Fix function specs
+* Renew session on `sign_in`
+* Add a custom claim key from load resource
 
 # v 0.14.2
 
